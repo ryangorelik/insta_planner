@@ -5,7 +5,9 @@ void main() => runApp(new MyApp());
 
 class ImageData extends InheritedWidget {
   final HashMap<int, DragImage> images;
+  List<ImageTarget> toGrid = new List<ImageTarget>();
   ImageData({this.images, Widget child}) : super(child:child);
+  Function reorder;
   @override
   bool updateShouldNotify(InheritedWidget oldWidget) => true;
   static ImageData of(BuildContext context) => context.inheritFromWidgetOfExactType(ImageData);
@@ -46,19 +48,55 @@ class _MyHomePageState extends State<MyHomePage> {
   List<int> selected = new List<int>();
   ImageData data;
   HashMap<int, DragImage> images;
-  List<ImageTarget> toGrid = new List<ImageTarget>();
-
+  List<ImageTarget> toGrid;
   @override
   void didChangeDependencies() {
     print("***didChangeDependencies***");
     super.didChangeDependencies();
     data = ImageData.of(context);
     images = data.images;
+    toGrid = data.toGrid;
     for (int i = 25; i >= 1; i--) {
       String file = 'assets/' + i.toString() + '.jpg';
       images.putIfAbsent(i, () => DragImage(ImageTile(file, i, _remove, _select)));
-      toGrid.add(ImageTarget(images[i]));
+      toGrid.add(ImageTarget(images[i], UniqueKey()));
     }
+  }
+  void reorder(int swap, int curr) {
+    print(swap);
+    print(curr);
+    setState(() {
+      int iswap = toGrid.indexWhere((i) => i.image.image.num == swap);
+      int icurr = toGrid.indexWhere((i) => i.image.image.num == curr);
+      ImageTarget oldiswap = toGrid[iswap];
+      ImageTarget oldicurr = toGrid[icurr];
+
+      List<ImageTarget> newGrid = new List<ImageTarget>();
+      if (iswap < icurr) {
+        for (int i = 0; i < iswap; i++) {
+          newGrid.add(toGrid[i]);
+        }
+        for (int i = iswap; i < icurr; i++) {
+          newGrid.add(toGrid[i+1]);
+        }
+        newGrid.add(toGrid[iswap]);
+        for (int i = icurr+1; i< toGrid.length; i++) {
+          newGrid.add(toGrid[i]);
+        }
+      } else {
+        for (int i = 0; i < icurr; i++) {
+          newGrid.add(toGrid[i]);
+        }
+        newGrid.add(toGrid[iswap]);
+        for (int i = icurr+1; i<=iswap; i++) {
+          newGrid.add(toGrid[i-1]);
+        }
+        for (int i = iswap+1; i < toGrid.length; i++) {
+          newGrid.add(toGrid[i]);
+        }
+      }
+      toGrid = newGrid;
+    });
   }
   void _remove(int num) {
     print("removing: $num");
@@ -99,13 +137,13 @@ class _MyHomePageState extends State<MyHomePage> {
   }
   @override
   Widget build(BuildContext context) {
+    ImageData.of(context).reorder = reorder;
     print("BUILDING");
     List<ImageTarget> newGrid = new List<ImageTarget>();
     for (int i = 0; i<toGrid.length; i++) {
       print(toGrid[i].image.image.file);
       newGrid.add(toGrid[i]);
     }
-    print(newGrid[0].image.image.file);
     return new Scaffold(
       appBar: new AppBar(
         title: Row(children: <Widget>[Text('assets/' + 5.toString() + '.jpg'), Text(images.length.toString())]),
@@ -121,8 +159,9 @@ class _MyHomePageState extends State<MyHomePage> {
 }
 
 class ImageTarget extends StatefulWidget {
+  Key key;
   DragImage image;
-  ImageTarget(this.image);
+  ImageTarget(this.image, this.key);
   @override
   _TargetState createState() => new _TargetState(image);
 }
@@ -131,11 +170,6 @@ class _TargetState extends State<ImageTarget> {
   int val;
   _TargetState(this.image);
 
-  void update(DragImage i) {
-    setState(() {
-      image = i;
-    });
-  }
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -148,13 +182,11 @@ class _TargetState extends State<ImageTarget> {
           return true;
         },
         onAccept: (data) {
-          setState(() {
-            val = data;
-            print(val);
-            print(image.image.num);
-            image = ImageData.of(context).images[val];
-          });
+          int swap = data;
+          int curr = image.image.num;
+          ImageData.of(context).reorder(swap, curr);
           print("accepted!!!");
+
         },
       ),
     );

@@ -1,0 +1,4 @@
+#Mon Jan 14 16:41:49 PST 2019
+base.0=C\:\\Users\\Ryan\\Documents\\GitHub\\insta_planner\\build\\app\\intermediates\\transforms\\dexMerger\\debug\\0
+path.0=classes.dex
+renamed.0=classes.dex
